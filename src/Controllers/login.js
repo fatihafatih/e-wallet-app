@@ -15,7 +15,7 @@ function handleSubmit() {
     return;
   }
 
-  submitbtn.textContent = 'Loading...'; // ✅ Avant le setTimeout
+  submitbtn.textContent = 'Loading...'; 
 
   setTimeout(() => {
     const user = finduserbymail(mail, password);
@@ -24,7 +24,7 @@ function handleSubmit() {
       document.location = "dashboard.html";
     } else {
       alert("Bad Credentials");
-      submitbtn.textContent = 'Se connecter'; // ✅ Reset le bouton
+      submitbtn.textContent = 'Se connecter'; 
     }
   }, 2000);
 }

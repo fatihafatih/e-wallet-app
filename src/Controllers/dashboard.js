@@ -1,13 +1,11 @@
 import database from "../Models/database.js";
 
-
 // ========== INIT LOCALSTORAGE ==========
-if (!localStorage.getItem("users") || localStorage.getItem("users") === "undefined") {
-  if (!database || !database.users) {
-    console.error("❌ database.users est undefined — vérifie ton fichier database.js et son export");
-  } else {
-    localStorage.setItem("users", JSON.stringify(database.users));
-  }
+// Toujours synchroniser depuis database.js au démarrage
+if (database?.users) {
+  localStorage.setItem("users", JSON.stringify(database.users));
+} else {
+  console.error("database.users est undefined — vérifie ton fichier database.js et son export");
 }
 
 // ========== UTILISATEUR COURANT ==========
@@ -16,6 +14,7 @@ const user = JSON.parse(sessionStorage.getItem("CurrentUser"));
 if (!user) {
   document.location = "login.html";
 } else {
+
   // ========== AFFICHAGE INFOS USER ==========
   document.querySelector('#greetingName').textContent = user.name;
   document.querySelector('#availableBalance').textContent = user.wallet.balance + " " + user.wallet.currency;
@@ -35,7 +34,7 @@ if (!user) {
   const users = (raw && raw !== "undefined") ? JSON.parse(raw) : [];
 
   if (users.length === 0) {
-    console.warn("⚠️ Aucun utilisateur trouvé dans localStorage");
+    console.warn("Aucun utilisateur trouvé dans localStorage");
   } else {
     users
       .filter(u => u.id != user.id)
@@ -51,7 +50,7 @@ if (!user) {
   user.wallet.cards.forEach(card => {
     const option = document.createElement('option');
     option.value = card.id;
-    option.textContent = `${card.type} - **** ${card.numcards.slice(-4)}`;
+    option.textContent = card.type + " - **** " + card.numcards.slice(-4);
     document.getElementById('sourceCard').appendChild(option);
   });
 }
@@ -82,7 +81,7 @@ function getUsers() {
   try {
     return JSON.parse(raw);
   } catch (e) {
-    console.error("❌ Erreur parsing users localStorage", e);
+    console.error("Erreur parsing users localStorage", e);
     return [];
   }
 }
@@ -122,7 +121,8 @@ function checkBeneficiary(beneficiaryId, callback) {
 
 function makeTransaction(fromUser, toUser, amount, callback) {
   setTimeout(() => {
-    // Débiter
+
+    // Débiter l'expéditeur
     fromUser.wallet.balance -= amount;
     fromUser.wallet.transactions.unshift({
       id: Date.now().toString(),
@@ -133,7 +133,7 @@ function makeTransaction(fromUser, toUser, amount, callback) {
       to: toUser.name
     });
 
-    // Créditer
+    // Créditer le bénéficiaire
     toUser.wallet.balance += amount;
     toUser.wallet.transactions.unshift({
       id: (Date.now() + 1).toString(),
@@ -144,11 +144,18 @@ function makeTransaction(fromUser, toUser, amount, callback) {
       to: toUser.name
     });
 
-    // Sauvegarder
+    // Sauvegarder session
     sessionStorage.setItem("CurrentUser", JSON.stringify(fromUser));
+
+    // Mettre à jour fromUser ET toUser dans localStorage
     const allUsers = getUsers();
-    const index = allUsers.findIndex(u => u.id == toUser.id);
-    allUsers[index] = toUser;
+
+    const fromIndex = allUsers.findIndex(u => u.id == fromUser.id);
+    if (fromIndex !== -1) allUsers[fromIndex] = fromUser;
+
+    const toIndex = allUsers.findIndex(u => u.id == toUser.id);
+    if (toIndex !== -1) allUsers[toIndex] = toUser;
+
     localStorage.setItem("users", JSON.stringify(allUsers));
 
     callback(null, fromUser);
@@ -183,9 +190,12 @@ transferForm.addEventListener('submit', function (e) {
 
           btn.disabled = false;
           btn.innerHTML = '<i class="fas fa-paper-plane"></i> Transférer';
-          alert(`✅ ${validAmount} ${updatedUser.wallet.currency} envoyés à ${toUser.name} !`);
+
+          alert(validAmount + " " + updatedUser.wallet.currency + " envoyés à " + toUser.name + " !");
+
           document.querySelector('#availableBalance').textContent =
-            `${updatedUser.wallet.balance} ${updatedUser.wallet.currency}`;
+            updatedUser.wallet.balance + " " + updatedUser.wallet.currency;
+
           transferForm.reset();
         });
       });
@@ -193,6 +203,7 @@ transferForm.addEventListener('submit', function (e) {
   });
 });
 
+// ========== GESTION ERREURS ==========
 function handleError(btn, message) {
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-paper-plane"></i> Transférer';
